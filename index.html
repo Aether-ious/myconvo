@@ -48,8 +48,8 @@
     <!-- API Key Modal -->
     <div id="api-key-modal" class="absolute inset-0 bg-slate-900 bg-opacity-60 flex items-center justify-center z-50 hidden">
         <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md mx-4">
-            <h2 class="text-xl font-bold mb-4 text-slate-800">Enter Your Gemini API Key</h2>
-            <p class="text-slate-600 mb-4 text-sm">To use this chat, please provide your Google AI Studio API key. Your key is saved only in your browser's local storage and is never sent to any server besides Google's.</p>
+            <h2 class="text-xl font-bold mb-4 text-slate-800">Enter Your OpenAI API Key</h2>
+            <p class="text-slate-600 mb-4 text-sm">To use this chat, please provide your OpenAI API key. Your key is saved only in your browser's local storage and is never sent to any server besides OpenAI's.</p>
             <form id="api-key-form">
                 <input id="api-key-input" type="password" class="w-full p-2.5 border border-slate-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Paste your API key here">
                 <button type="submit" class="w-full bg-indigo-600 text-white p-2.5 rounded-lg hover:bg-indigo-700 transition font-semibold">Save and Start Chatting</button>
@@ -60,7 +60,7 @@
     <div class="flex flex-col h-screen">
         <!-- Header -->
         <header class="bg-white shadow-md w-full p-4 flex items-center justify-center border-b border-slate-200">
-            <h1 class="text-xl font-bold text-slate-700">Conversational AI</h1>
+            <h1 class="text-xl font-bold text-slate-700">Conversational AI (OpenAI)</h1>
         </header>
 
         <!-- Chat Container -->
@@ -68,10 +68,10 @@
             <!-- Welcome Message -->
             <div class="flex items-start gap-3">
                 <div class="bg-indigo-500 text-white p-2 rounded-full h-8 w-8 flex-shrink-0 flex items-center justify-center">
-                    <svg xmlns="http://www.w.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
                 </div>
                 <div class="bg-white p-3 rounded-lg shadow-sm max-w-xl">
-                    <p class="text-sm">Hello! I'm a conversational AI. You can ask me anything, from writing code to creating stories. Let's start a conversation!</p>
+                    <p class="text-sm">Hello! I'm a conversational AI powered by OpenAI. Let's start a conversation!</p>
                 </div>
             </div>
             <!-- Dynamic chat messages will be added here -->
@@ -113,23 +113,17 @@
             const apiKeyForm = document.getElementById('api-key-form');
             const apiKeyInput = document.getElementById('api-key-input');
 
-            // --- Gemini API Configuration ---
-            let apiKey = localStorage.getItem('GEMINI_API_KEY');
+            // --- OpenAI API Configuration ---
+            const API_URL = 'https://api.openai.com/v1/chat/completions';
+            let apiKey = localStorage.getItem('OPENAI_API_KEY');
 
             // This array holds the entire conversation history.
-            let conversationHistory = [];
-
-            // This is the initial instruction for the model.
-            const systemInstruction = {
-                role: "user",
-                parts: [{ text: "You are a helpful and versatile AI assistant. Respond to the user's queries in a clear and friendly manner. Format your responses using markdown where appropriate (e.g., for code blocks, lists, bold text)." }]
-            };
-            const modelSystemResponse = {
-                role: "model",
-                parts: [{ text: "Okay, I am ready to assist you. How can I help?" }]
-            };
-            conversationHistory.push(systemInstruction);
-            conversationHistory.push(modelSystemResponse);
+            let conversationHistory = [
+                {
+                    role: "system",
+                    content: "You are a helpful and versatile AI assistant. Respond to the user's queries in a clear and friendly manner. Format your responses using markdown where appropriate (e.g., for code blocks, lists, bold text)."
+                }
+            ];
 
             // --- Event Listeners ---
             chatForm.addEventListener('submit', handleSendMessage);
@@ -142,9 +136,6 @@
 
             // --- Main Functions ---
 
-            /**
-             * Checks if the API key exists and updates the UI accordingly.
-             */
             function checkApiKey() {
                 if (!apiKey) {
                     apiKeyModal.classList.remove('hidden');
@@ -155,15 +146,12 @@
                 }
             }
 
-            /**
-             * Saves the API key from the modal to localStorage.
-             */
             function handleApiKeySave(e) {
                 e.preventDefault();
                 const key = apiKeyInput.value.trim();
                 if (key) {
                     apiKey = key;
-                    localStorage.setItem('GEMINI_API_KEY', key);
+                    localStorage.setItem('OPENAI_API_KEY', key);
                     apiKeyModal.classList.add('hidden');
                     setFormDisabled(false);
                     messageInput.focus();
@@ -177,7 +165,7 @@
                 if (!userMessage) return;
 
                 addMessageToUI('user', userMessage);
-                conversationHistory.push({ role: 'user', parts: [{ text: userMessage }] });
+                conversationHistory.push({ role: 'user', content: userMessage });
 
                 messageInput.value = '';
                 messageInput.style.height = 'auto';
@@ -201,43 +189,40 @@
             
             async function getAIResponse() {
                 if (!apiKey) {
-                    addMessageToUI('assistant', "It looks like your API key is missing. Please set it to continue.", true);
+                    addMessageToUI('assistant', "It looks like your OpenAI API key is missing. Please set it to continue.", true);
                     checkApiKey();
                     return;
                 }
-                const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
                 
                 const payload = {
-                    contents: conversationHistory,
-                    "safetySettings": [
-                        { "category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE" },
-                        { "category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE" },
-                        { "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE" },
-                        { "category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE" }
-                    ]
+                    model: "gpt-4o", // You can change this to "gpt-3.5-turbo" or other models
+                    messages: conversationHistory,
                 };
 
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
                     body: JSON.stringify(payload)
                 });
 
                 if (!response.ok) {
                     const errorBody = await response.json();
-                    const errorDetails = errorBody.error?.message || "Check the browser console for more details.";
+                    const errorDetails = errorBody.error?.message || "An unknown error occurred.";
                     throw new Error(`API Error: ${response.status} - ${errorDetails}`);
                 }
 
                 const result = await response.json();
                 
-                const aiMessage = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                const aiMessage = result.choices[0]?.message?.content;
                 if (!aiMessage) {
                     throw new Error("Invalid response structure from API.");
                 }
 
                 addMessageToUI('assistant', aiMessage);
-                conversationHistory.push({ role: 'model', parts: [{ text: aiMessage }] });
+                conversationHistory.push({ role: 'assistant', content: aiMessage });
             }
 
             // --- UI Helper Functions ---
@@ -276,7 +261,6 @@
             function setFormDisabled(disabled) {
                 messageInput.disabled = disabled;
                 sendButton.disabled = disabled;
-                // Add a visual cue for disabled state
                 messageInput.classList.toggle('bg-slate-100', disabled);
             }
 
