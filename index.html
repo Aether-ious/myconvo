@@ -45,6 +45,18 @@
 </head>
 <body class="bg-slate-100 text-slate-800">
 
+    <!-- API Key Modal -->
+    <div id="api-key-modal" class="absolute inset-0 bg-slate-900 bg-opacity-60 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md mx-4">
+            <h2 class="text-xl font-bold mb-4 text-slate-800">Enter Your Gemini API Key</h2>
+            <p class="text-slate-600 mb-4 text-sm">To use this chat, please provide your Google AI Studio API key. Your key is saved only in your browser's local storage and is never sent to any server besides Google's.</p>
+            <form id="api-key-form">
+                <input id="api-key-input" type="password" class="w-full p-2.5 border border-slate-300 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Paste your API key here">
+                <button type="submit" class="w-full bg-indigo-600 text-white p-2.5 rounded-lg hover:bg-indigo-700 transition font-semibold">Save and Start Chatting</button>
+            </form>
+        </div>
+    </div>
+
     <div class="flex flex-col h-screen">
         <!-- Header -->
         <header class="bg-white shadow-md w-full p-4 flex items-center justify-center border-b border-slate-200">
@@ -56,7 +68,7 @@
             <!-- Welcome Message -->
             <div class="flex items-start gap-3">
                 <div class="bg-indigo-500 text-white p-2 rounded-full h-8 w-8 flex-shrink-0 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+                    <svg xmlns="http://www.w.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
                 </div>
                 <div class="bg-white p-3 rounded-lg shadow-sm max-w-xl">
                     <p class="text-sm">Hello! I'm a conversational AI. You can ask me anything, from writing code to creating stories. Let's start a conversation!</p>
@@ -97,60 +109,80 @@
             const messageInput = document.getElementById('message-input');
             const sendButton = document.getElementById('send-button');
             const typingIndicator = document.getElementById('typing-indicator');
+            const apiKeyModal = document.getElementById('api-key-modal');
+            const apiKeyForm = document.getElementById('api-key-form');
+            const apiKeyInput = document.getElementById('api-key-input');
 
             // --- Gemini API Configuration ---
-            // IMPORTANT: The API key is an empty string. The execution environment will
-            // automatically handle authentication. Do not add a key here.
-            const API_KEY = ""; 
-            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${API_KEY}`;
+            let apiKey = localStorage.getItem('GEMINI_API_KEY');
 
             // This array holds the entire conversation history.
             let conversationHistory = [];
 
             // This is the initial instruction for the model.
             const systemInstruction = {
-                role: "user", // The system role is abstracted as a user turn in the Gemini API
+                role: "user",
                 parts: [{ text: "You are a helpful and versatile AI assistant. Respond to the user's queries in a clear and friendly manner. Format your responses using markdown where appropriate (e.g., for code blocks, lists, bold text)." }]
             };
-            
-            // This is the model's initial (and hidden) response to the system instruction.
             const modelSystemResponse = {
                 role: "model",
                 parts: [{ text: "Okay, I am ready to assist you. How can I help?" }]
-            }
-
-            // Pre-load the history with the system instruction
+            };
             conversationHistory.push(systemInstruction);
             conversationHistory.push(modelSystemResponse);
-
 
             // --- Event Listeners ---
             chatForm.addEventListener('submit', handleSendMessage);
             messageInput.addEventListener('keydown', handleKeydown);
             messageInput.addEventListener('input', autoResizeTextarea);
+            apiKeyForm.addEventListener('submit', handleApiKeySave);
 
+            // --- Initial Setup ---
+            checkApiKey();
 
             // --- Main Functions ---
 
             /**
-             * Handles form submission to send a message.
+             * Checks if the API key exists and updates the UI accordingly.
              */
+            function checkApiKey() {
+                if (!apiKey) {
+                    apiKeyModal.classList.remove('hidden');
+                    setFormDisabled(true);
+                } else {
+                    apiKeyModal.classList.add('hidden');
+                    setFormDisabled(false);
+                }
+            }
+
+            /**
+             * Saves the API key from the modal to localStorage.
+             */
+            function handleApiKeySave(e) {
+                e.preventDefault();
+                const key = apiKeyInput.value.trim();
+                if (key) {
+                    apiKey = key;
+                    localStorage.setItem('GEMINI_API_KEY', key);
+                    apiKeyModal.classList.add('hidden');
+                    setFormDisabled(false);
+                    messageInput.focus();
+                }
+            }
+            
             async function handleSendMessage(e) {
                 e.preventDefault();
                 const userMessage = messageInput.value.trim();
 
                 if (!userMessage) return;
 
-                // Add user message to UI and history
                 addMessageToUI('user', userMessage);
                 conversationHistory.push({ role: 'user', parts: [{ text: userMessage }] });
 
-                // Clear input and disable form
                 messageInput.value = '';
-                messageInput.style.height = 'auto'; // Reset height
+                messageInput.style.height = 'auto';
                 setFormDisabled(true);
 
-                // Show typing indicator
                 typingIndicator.classList.remove('hidden');
                 scrollToBottom();
 
@@ -161,21 +193,23 @@
                     const errorMessage = "Sorry, I encountered an error. Please try again. Details: " + error.message;
                     addMessageToUI('assistant', errorMessage, true);
                 } finally {
-                    // Re-enable form and hide indicator
                     setFormDisabled(false);
                     typingIndicator.classList.add('hidden');
                     messageInput.focus();
                 }
             }
             
-            /**
-             * Fetches a response from the Gemini API.
-             */
             async function getAIResponse() {
+                if (!apiKey) {
+                    addMessageToUI('assistant', "It looks like your API key is missing. Please set it to continue.", true);
+                    checkApiKey();
+                    return;
+                }
+                const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                
                 const payload = {
                     contents: conversationHistory,
-                     // Optional: Add safety settings and generation config if needed
-                     "safetySettings": [
+                    "safetySettings": [
                         { "category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE" },
                         { "category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE" },
                         { "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE" },
@@ -190,59 +224,41 @@
                 });
 
                 if (!response.ok) {
-                    const errorBody = await response.text();
-                    throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorBody}`);
+                    const errorBody = await response.json();
+                    const errorDetails = errorBody.error?.message || "Check the browser console for more details.";
+                    throw new Error(`API Error: ${response.status} - ${errorDetails}`);
                 }
 
                 const result = await response.json();
                 
-                // Extract the text from the response
                 const aiMessage = result.candidates?.[0]?.content?.parts?.[0]?.text;
                 if (!aiMessage) {
                     throw new Error("Invalid response structure from API.");
                 }
 
-                // Add AI response to UI and history
                 addMessageToUI('assistant', aiMessage);
                 conversationHistory.push({ role: 'model', parts: [{ text: aiMessage }] });
             }
 
-
             // --- UI Helper Functions ---
-
-            /**
-             * Adds a new message bubble to the chat interface.
-             * @param {'user' | 'assistant'} role - The role of the sender.
-             * @param {string} message - The message content.
-             * @param {boolean} isError - Optional flag for styling error messages.
-             */
+            
             function addMessageToUI(role, message, isError = false) {
                 const messageDiv = document.createElement('div');
-                messageDiv.className = 'flex items-start gap-3';
-                
-                // Simple text-to-HTML conversion (handles newlines)
                 const formattedMessage = message.replace(/\n/g, '<br>');
 
-                let bubbleClasses, iconSVG, wrapperClasses;
-
                 if (role === 'user') {
-                    wrapperClasses = 'flex items-start gap-3 justify-end';
-                    bubbleClasses = 'bg-indigo-600 text-white p-3 rounded-lg shadow-sm max-w-xl';
-                    iconSVG = `<div class="bg-slate-300 text-slate-700 p-2 rounded-full h-8 w-8 flex-shrink-0 flex items-center justify-center font-semibold">YOU</div>`;
+                    messageDiv.className = 'flex items-start gap-3 justify-end';
                     messageDiv.innerHTML = `
-                        <div class="${bubbleClasses}">${formattedMessage}</div>
-                        ${iconSVG}
+                        <div class="bg-indigo-600 text-white p-3 rounded-lg shadow-sm max-w-xl">${formattedMessage}</div>
+                        <div class="bg-slate-300 text-slate-700 p-2 rounded-full h-8 w-8 flex-shrink-0 flex items-center justify-center font-semibold">YOU</div>
                     `;
-                    messageDiv.classList.add('justify-end');
-
                 } else { // Assistant
+                    messageDiv.className = 'flex items-start gap-3';
                     const bubbleBg = isError ? 'bg-red-100' : 'bg-white';
                     const bubbleText = isError ? 'text-red-700' : 'text-slate-800';
-                    bubbleClasses = `${bubbleBg} ${bubbleText} p-3 rounded-lg shadow-sm max-w-xl`;
-                    iconSVG = `<div class="bg-indigo-500 text-white p-2 rounded-full h-8 w-8 flex-shrink-0 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg></div>`;
                     messageDiv.innerHTML = `
-                        ${iconSVG}
-                        <div class="${bubbleClasses}">${formattedMessage}</div>
+                        <div class="bg-indigo-500 text-white p-2 rounded-full h-8 w-8 flex-shrink-0 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg></div>
+                        <div class="${bubbleBg} ${bubbleText} p-3 rounded-lg shadow-sm max-w-xl">${formattedMessage}</div>
                     `;
                 }
                 
@@ -250,9 +266,6 @@
                 scrollToBottom();
             }
 
-            /**
-             * Handles keydown events in the textarea for sending with Enter.
-             */
             function handleKeydown(e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -260,24 +273,17 @@
                 }
             }
 
-            /**
-             * Disables or enables the input form.
-             */
             function setFormDisabled(disabled) {
                 messageInput.disabled = disabled;
                 sendButton.disabled = disabled;
+                // Add a visual cue for disabled state
+                messageInput.classList.toggle('bg-slate-100', disabled);
             }
 
-            /**
-             * Automatically scrolls the chat container to the bottom.
-             */
             function scrollToBottom() {
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             }
             
-            /**
-             * Automatically resizes the textarea based on its content.
-             */
             function autoResizeTextarea() {
                 this.style.height = 'auto';
                 this.style.height = (this.scrollHeight) + 'px';
@@ -286,3 +292,4 @@
     </script>
 </body>
 </html>
+
